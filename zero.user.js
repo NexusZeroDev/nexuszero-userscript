@@ -1,11 +1,11 @@
 // ==UserScript==
 // @name         Nexus Zero Bypasser
 // @namespace    http://tampermonkey.net/
-// @version      0.53
+// @version      1.0
 // @description  Powered by the bypass.city API.
 // @author       Divine & Reinhard
-// @updateURL    https://raw.githubusercontent.com/Divine-Flow/zerox-userscript/main/zerox.divine.js
-// @downloadURL  https://raw.githubusercontent.com/Divine-Flow/zerox-userscript/main/zerox.divine.js
+// @updateURL    https://raw.githubusercontent.com/NexusZeroDev/nexuszero-userscript/main/zero.user.js
+// @downloadURL  https://raw.githubusercontent.com/NexusZeroDev/nexuszero-userscript/main/zero.user.js
 // @match        *://linkvertise.com/*
 // @match        *://loot-link.com/*
 // @match        *://loot-links.com/*
