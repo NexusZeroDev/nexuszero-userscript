@@ -1,9 +1,9 @@
 // ==UserScript==
-// @name         Nexus Zero Bypasser
+// @name         Nex Zero Bypasser
 // @namespace    http://tampermonkey.net/
 // @version      1.0
 // @description  Powered by the bypass.city API.
-// @author       Divine & Reinhard
+// @author       Harley & Reinhard
 // @updateURL    https://raw.githubusercontent.com/NexusZeroDev/nexuszero-userscript/main/zero.user.js
 // @downloadURL  https://raw.githubusercontent.com/NexusZeroDev/nexuszero-userscript/main/zero.user.js
 // @match        *://linkvertise.com/*
@@ -434,11 +434,11 @@
     const hostname = location.hostname;
     const url = window.location.href;
 
-    console.log('Nexus Zero: Running on', hostname, 'with URL:', url);
+    console.log('Nex Zero: Running on', hostname, 'with URL:', url);
 
     // Google Hash Error Handling
     if (hostname.includes('google.com') && url.includes('hash=')) {
-        console.log('Nexus Zero: Detected Google Hash/Invalid API Response.');
+        console.log('Nex Zero: Detected Google Hash/Invalid API Response.');
         createInvalidApiOverlay();
         return;
     }
@@ -633,7 +633,7 @@
     // Linkvertise DIRECT Bypass
     if (hostname === 'linkvertise.com' && url !== 'https://linkvertise.com' && url !== 'https://linkvertise.com/') {
       if (url.includes('#no-bypass')) {
-        console.log('Nexus Zero: #no-bypass flag detected.');
+        console.log('Nex Zero: #no-bypass flag detected.');
         createNoBypassOverlay();
         return;
       }
@@ -737,7 +737,7 @@
 
     if (bypassCityDomains.some(domain => currentDomain.includes(domain) || hostname.includes(domain))) {
       if (url.includes('#no-bypass')) {
-          console.log('Nexus Zero: #no-bypass flag on supported domain.');
+          console.log('Nex Zero: #no-bypass flag on supported domain.');
           createNoBypassOverlay();
           return;
       }
@@ -787,8 +787,8 @@
             }
 
             if (resolvedUrl) {
-                GM_setValue("nexus_cached_url", resolvedUrl);
-                console.log("Nexus Zero: Cached URL:", resolvedUrl);
+                GM_setValue("nex_cached_url", resolvedUrl);
+                console.log("Nex Zero: Cached URL:", resolvedUrl);
             }
 
             if (resolvedUrl) {
