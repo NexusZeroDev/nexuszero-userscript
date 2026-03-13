@@ -1,9 +1,9 @@
 // ==UserScript==
-// @name         Nex Zero Bypasser
+// @name         Zerox Bypasser (Enhanced Callback) V4
 // @namespace    http://tampermonkey.net/
-// @version      1.0
-// @description  Powered by the bypass.city API.
-// @author       Harley & Reinhard
+// @version      1.3
+// @description  Powered by the bypass.city API with official callback logic.
+// @author       Harley & Reinhard & bypass.city team
 // @updateURL    https://raw.githubusercontent.com/NexusZeroDev/nexuszero-userscript/main/zero.user.js
 // @downloadURL  https://raw.githubusercontent.com/NexusZeroDev/nexuszero-userscript/main/zero.user.js
 // @match        *://linkvertise.com/*
@@ -28,6 +28,8 @@
 // @match        *://pandadevelopment.net/*
 // @match        *://luminon.top/*
 // @match        *://atherhub-key-nexus.lovable.app/*
+// @match        *://www.getastra.lol/*
+// @match        *://scripts.city/*
 // @match        *://bypass.city/*
 // @match        *://adbypass.org/*
 // @match        *://auth.platoboost.app/*
@@ -109,6 +111,12 @@
 (function() {
   'use strict';
 
+  const config = {
+      version: "14.0.2",
+      installed: true,
+      downloadURL: "https://api2.adbypass.org/userscript/download/bypass.user.js"
+  };
+
   function createInvalidApiOverlay() {
       const overlay = document.createElement('div');
       overlay.style.cssText = `
@@ -177,7 +185,7 @@
       `;
 
       const title = document.createElement('div');
-      title.innerText = "Nex Guard";
+      title.innerText = "Zerox Guard";
       title.style.cssText = "color: white; font-size: 20px; font-weight: bold; margin-bottom: 10px; font-family: 'Segoe UI', sans-serif;";
 
       const countdownText = document.createElement('div');
@@ -189,7 +197,6 @@
 
       const btn = document.createElement('button');
       btn.innerText = "Please Wait...";
-      // Initial Disabled State
       btn.style.cssText = `
           padding: 15px 40px;
           font-size: 18px;
@@ -203,7 +210,6 @@
           transition: all 0.3s;
           box-shadow: none;
       `;
-      // Remove pointer events initially
       btn.style.pointerEvents = "none";
 
       let countdownInterval;
@@ -221,7 +227,6 @@
           setTimeout(forceRefresh, 1500);
       };
 
-      // Function to enable the button after timer
       const activateButton = () => {
           btn.innerText = "Continue to Destination";
           btn.style.background = "#e67e22";
@@ -254,10 +259,10 @@
           };
       };
 
-      let seconds = 15; // Changed to 15 seconds
+      let seconds = 15;
       const updateCountdown = () => {
           if (seconds > 0) {
-              countdownText.innerText = `NexGuard Suggested to wait ${seconds} seconds`;
+              countdownText.innerText = `Zerox Guard Suggested to wait ${seconds} seconds`;
               seconds--;
           } else {
               clearInterval(countdownInterval);
@@ -383,43 +388,45 @@
   }
 
   async function directBypassRedirect(url) {
-    console.log('Nexus Zero: Using direct bypass method for:', url);
+    console.log('Zerox: Using direct bypass method for:', url);
     const bypassCityOnline = await checkBypassCityStatus();
     const redirectBase = bypassCityOnline ? "https://bypass.city" : "https://adbypass.org";
-    showProgressNotification("🚀 Enhanced Bypass", `Redirecting to ${bypassCityOnline ? 'bypass.city' : 'adbypass.org fallback'}...`);
+
+    showProgressNotification("🚀 Enhanced Bypass", bypassCityOnline ? "#1 Primary External Server" : "#2 Fallback External Server");
+
+    if (typeof GM_setValue !== 'undefined') {
+        GM_setValue("bypass.callback", window.location.href);
+    }
 
     if (typeof GM_deleteValue !== 'undefined') {
       GM_deleteValue("bypass.data");
-      GM_deleteValue("bypass.callback");
     }
 
     const bypassUrl = new URL(`${redirectBase}/bypass`);
     bypassUrl.searchParams.set('bypass', url);
     bypassUrl.searchParams.set('userscript', 'true');
-    bypassUrl.searchParams.set('userscript-version', '0.1');
+    bypassUrl.searchParams.set('userscript-version', config.version);
 
     setTimeout(() => {
         window.location.href = bypassUrl.href;
     }, 2000);
   }
 
-  // HELPER: Click element containing specific text
   function clickElementByText(searchText, tagNames = ['button', 'a', 'span', 'div']) {
       for (const tag of tagNames) {
           const elements = document.querySelectorAll(tag);
           for (const el of elements) {
               if (el.textContent && el.textContent.trim() === searchText) {
-                  console.log(`Nexus Zero: Found "${searchText}" in <${tag}>, clicking...`);
+                  console.log(`Zerox: Found "${searchText}" in <${tag}>, clicking...`);
                   el.click();
                   return true;
               }
           }
       }
-      // Fallback: Check all elements
       const allElements = document.querySelectorAll('*');
       for (const el of allElements) {
           if (el.textContent && el.textContent.trim() === searchText && el.children.length === 0) {
-              console.log(`Nexus Zero: Found "${searchText}" in <${el.tagName}> (fallback), clicking parent...`);
+              console.log(`Zerox: Found "${searchText}" in <${el.tagName}> (fallback), clicking parent...`);
               const clickable = el.closest('button') || el.closest('a') || el;
               if (clickable) {
                   clickable.click();
@@ -434,16 +441,28 @@
     const hostname = location.hostname;
     const url = window.location.href;
 
-    console.log('Nex Zero: Running on', hostname, 'with URL:', url);
+    console.log('Zerox: Running on', hostname, 'with URL:', url);
 
-    // Google Hash Error Handling
+    const bypassData = GM_getValue("bypass.data");
+    if (bypassData) {
+        const targetUrl = bypassData.bypassData || bypassData;
+        console.log("Zerox: Found stored bypass data:", targetUrl);
+
+        showProgressNotification("✅ Callback Success", "Redirecting to destination...");
+        GM_deleteValue("bypass.data");
+
+        setTimeout(() => {
+            window.location.href = targetUrl;
+        }, 500);
+        return;
+    }
+
     if (hostname.includes('google.com') && url.includes('hash=')) {
-        console.log('Nex Zero: Detected Google Hash/Invalid API Response.');
+        console.log('Zerox: Detected Google Hash/Invalid API Response.');
         createInvalidApiOverlay();
         return;
     }
 
-    // Luminon Logic
     if (hostname.includes('luminon.top')) {
         const checkRedirect = setInterval(() => {
             const hasText = Array.from(document.querySelectorAll("*"))
@@ -461,7 +480,6 @@
         return;
     }
 
-    // Atherhub Logic
     if (hostname.includes('atherhub-key-nexus.lovable.app')) {
         const checkRedirect = setInterval(() => {
             const hasText = Array.from(document.querySelectorAll("*"))
@@ -479,7 +497,31 @@
         return;
     }
 
-    // Justpaste.it Redirect Logic
+    if (hostname.includes('getastra.lol') && url.includes('/key')) {
+        showProgressNotification("🟣 Astra | Redirecting", "Redirecting to a supported checkpoint.");
+        setTimeout(() => {
+            window.location.href = "https://ads.luarmor.net/get_key?for=Astra_Lootlabs_V-EgqMzPuurmyh";
+        }, 2000);
+        return;
+    }
+
+    if (hostname === 'scripts.city') {
+        if (url.includes('/Legend-Hub-Key-1')) {
+            showProgressNotification("🌀 Legend | Redirecting", "Redirecting to 1st Checkpoint");
+            setTimeout(() => {
+                clickElementByText("Proceed to Key Link");
+            }, 2000);
+            return;
+        }
+        if (url.includes('/Legend-Hub-Key-2025-Roblox')) {
+            showProgressNotification("🌀 Legend | Redirecting", "Redirecting to final Checkpoint.");
+            setTimeout(() => {
+                clickElementByText("Get Your Key");
+            }, 2000);
+            return;
+        }
+    }
+
     if (hostname === 'justpaste.it' && url.includes('/redirect/')) {
        const checkContinue = setInterval(() => {
            const continueBtn = Array.from(document.querySelectorAll("a, button"))
@@ -495,9 +537,7 @@
        return;
     }
 
-    // Panda Development
     if (hostname.includes('pandadevelopment.net')) {
-        // Check for "Select Checkpoint Provider"
         const checkProvider = setInterval(() => {
             const hasText = Array.from(document.querySelectorAll("*"))
                 .some(el => el.textContent && el.textContent.includes("Select Checkpoint Provider"));
@@ -509,7 +549,6 @@
         }, 1000);
         setTimeout(() => clearInterval(checkProvider), 30000);
 
-        // Check for "Complete these first before getting the key"
         const checkTasks = setInterval(() => {
             const hasTaskText = Array.from(document.querySelectorAll("*"))
                 .some(el => el.textContent && el.textContent.includes("Complete these first before getting the key"));
@@ -524,7 +563,6 @@
         }, 1000);
         setTimeout(() => clearInterval(checkTasks), 30000);
 
-        // NEW: Check for "Copy Key" (Notification only, no click)
         const checkCopyKey = setInterval(() => {
             const copyKeyBtn = Array.from(document.querySelectorAll("*"))
                 .find(el => (el.textContent || '').trim() === "Copy Key");
@@ -539,7 +577,6 @@
         return;
     }
 
-    // Luarmor handling
     if (url.startsWith('https://ads.luarmor.net/get_key')) {
       let isFinalSuccess = false;
 
@@ -630,10 +667,9 @@
       return;
     }
 
-    // Linkvertise DIRECT Bypass
     if (hostname === 'linkvertise.com' && url !== 'https://linkvertise.com' && url !== 'https://linkvertise.com/') {
       if (url.includes('#no-bypass')) {
-        console.log('Nex Zero: #no-bypass flag detected.');
+        console.log('Zerox: #no-bypass flag detected.');
         createNoBypassOverlay();
         return;
       }
@@ -641,7 +677,6 @@
       return;
     }
 
-    // PlatoBoost & PlatoRelay handler
     if (hostname.includes('auth.platoboost.app') || hostname.includes('auth.platorelay.com')) {
       const checkFalseClickModal = setInterval(() => {
         const okButtons = Array.from(document.querySelectorAll("button"))
@@ -663,7 +698,6 @@
         }
       }, 1000);
 
-      // Modified Continue Button Logic (Manual Only)
       const checkContinueButton = setInterval(() => {
         const continueBtn = Array.from(document.querySelectorAll("button, a, span, div"))
           .find(el => (el.textContent || '').trim() === "Continue");
@@ -675,7 +709,6 @@
       }, 500);
       setTimeout(() => clearInterval(checkContinueButton), 30000);
 
-      // Security Check / Turnstile Logic
       const checkSecurity = setInterval(() => {
         const securityText = Array.from(document.querySelectorAll("*"))
             .find(el => (el.textContent || '').includes("Security check"));
@@ -709,7 +742,6 @@
       return;
     }
 
-    // All bypass.city redirect domains
     const bypassCityDomains = [
       'loot-link.com', 'loot-links.com', 'lootlink.org', 'lootlinks.co', 'lootdest.info', 'lootdest.org', 'lootdest.com',
       'loot-link.co', 'loot-link.org', 'loot-link.net', 'loot-link.info', 'loot-links.co', 'loot-links.org', 'loot-links.net', 'loot-links.info',
@@ -737,7 +769,7 @@
 
     if (bypassCityDomains.some(domain => currentDomain.includes(domain) || hostname.includes(domain))) {
       if (url.includes('#no-bypass')) {
-          console.log('Nex Zero: #no-bypass flag on supported domain.');
+          console.log('Zerox: #no-bypass flag on supported domain.');
           createNoBypassOverlay();
           return;
       }
@@ -745,9 +777,45 @@
       return;
     }
 
-    // On bypass.city or adbypass.org
     if (hostname.includes("bypass.city") || hostname.includes("adbypass.org")) {
       const siteName = hostname.includes("bypass.city") ? "bypass.city" : "adbypass.org";
+
+      const injectScriptInfo = () => {
+          const injectJs = `window.scriptInfo = JSON.parse('${JSON.stringify(config)}')`;
+          const script = document.createElement("script");
+          script.textContent = injectJs;
+          document.body.appendChild(script);
+      };
+      injectScriptInfo();
+
+      const sendUserscriptInfoEvent = () => {
+          const event = new CustomEvent("userScriptInfo", {
+              detail: config
+          });
+          window.dispatchEvent(event);
+      };
+      sendUserscriptInfoEvent();
+
+      window.addEventListener("bypassComplete", async (event) => {
+          const data = event.detail;
+          console.log("Zerox: Received bypassComplete event", data);
+
+          const redirectURL = GM_getValue("bypass.callback");
+
+          if (redirectURL) {
+              GM_setValue("bypass.data", data);
+              GM_deleteValue("bypass.callback");
+
+              showProgressNotification("✅ Bypass Complete", "Returning to original tab...");
+
+              setTimeout(() => {
+                   window.open(redirectURL, "_self");
+              }, 500);
+          } else {
+               showProgressNotification("✅ Bypass Complete", "Opening link...");
+               window.location.href = data.bypassData;
+          }
+      });
 
       const checkCloudflareErrorEnhanced = () => {
         if (document.body) {
@@ -762,65 +830,6 @@
       };
       checkCloudflareErrorEnhanced();
       setTimeout(checkCloudflareErrorEnhanced, 2000);
-      setTimeout(checkCloudflareErrorEnhanced, 5000);
-
-      // MAIN HANDLER: Wait for "Copy Link" button and click it
-      const handleBypassResult = setInterval(() => {
-        // Try to click "Copy Link" using broad search
-        const clicked = clickElementByText("Copy Link");
-
-        if (clicked) {
-          clearInterval(handleBypassResult);
-          showProgressNotification("🔍 Scanning for threats", "Identifying risks...");
-
-          setTimeout(() => {
-            let resolvedUrl = "";
-            const textElements = document.querySelectorAll("p, span, div, h1, h2, h3");
-            for (const el of textElements) {
-              if (el.innerText && el.innerText.includes("The resolved url is:")) {
-                const parts = el.innerText.split("The resolved url is:");
-                if (parts.length > 1) {
-                  resolvedUrl = parts[1].trim();
-                  break;
-                }
-              }
-            }
-
-            if (resolvedUrl) {
-                GM_setValue("nex_cached_url", resolvedUrl);
-                console.log("Nex Zero: Cached URL:", resolvedUrl);
-            }
-
-            if (resolvedUrl) {
-              if (resolvedUrl.includes("ads.luarmor.net")) {
-                showProgressNotification("⚠️ Threats found", "Redirecting...");
-                const urlParams = new URLSearchParams(window.location.search);
-                const originalLink = urlParams.get('bypass');
-                if (originalLink) {
-                    window.location.href = originalLink + "#no-bypass";
-                } else {
-                    window.location.href = resolvedUrl;
-                }
-              } else {
-                showProgressNotification("✅ Bypass Complete", "Opening destination...");
-
-                // Try to click "Open bypassed Link"
-                setTimeout(() => {
-                    const openClicked = clickElementByText("Open bypassed Link");
-                    if (!openClicked) {
-                        console.log("Nexus Zero: 'Open bypassed Link' not found, using URL redirect.");
-                        window.location.href = resolvedUrl;
-                    }
-                }, 500);
-              }
-            } else {
-              showProgressNotification("✅ Bypass Complete", "Done.");
-            }
-          }, 1000);
-        }
-      }, 1000);
-
-      setTimeout(() => clearInterval(handleBypassResult), 300000);
 
       let lastStatus = "";
       const statusInterval = setInterval(() => {
