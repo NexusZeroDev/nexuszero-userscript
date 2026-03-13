@@ -1,9 +1,9 @@
 // ==UserScript==
-// @name         Zerox Bypasser (Enhanced Callback) V4
+// @name         Zerox Bypasser 
 // @namespace    http://tampermonkey.net/
-// @version      1.3
-// @description  Powered by the bypass.city API with official callback logic.
-// @author       Harley & Reinhard & bypass.city team
+// @version      1.0
+// @description  Forked version of bypass.city userscript
+// @author       Harley & Reinhard 
 // @updateURL    https://raw.githubusercontent.com/NexusZeroDev/nexuszero-userscript/main/zero.user.js
 // @downloadURL  https://raw.githubusercontent.com/NexusZeroDev/nexuszero-userscript/main/zero.user.js
 // @match        *://linkvertise.com/*
