@@ -1,9 +1,10 @@
 // ==UserScript==
-// @name         Zerox Bypasser 
+// @name         Zerox Bypasser
 // @namespace    http://tampermonkey.net/
-// @version      1.0
+// @version      1.0.1
 // @description  Forked version of bypass.city userscript
-// @author       Harley & Reinhard 
+// @author       Harley & Reinhard
+// @icon         https://raw.githubusercontent.com/NexusZeroDev/nexuszero-userscript/main/revamped.png
 // @updateURL    https://raw.githubusercontent.com/NexusZeroDev/nexuszero-userscript/main/zero.user.js
 // @downloadURL  https://raw.githubusercontent.com/NexusZeroDev/nexuszero-userscript/main/zero.user.js
 // @match        *://linkvertise.com/*
@@ -117,60 +118,14 @@
       downloadURL: "https://api2.adbypass.org/userscript/download/bypass.user.js"
   };
 
-  function createInvalidApiOverlay() {
-      const overlay = document.createElement('div');
-      overlay.style.cssText = `
-          position: fixed;
-          inset: 0;
-          z-index: 2147483647;
-          background: rgba(0, 0, 0, 0.95);
-          display: flex;
-          justify-content: center;
-          align-items: center;
-          flex-direction: column;
-          font-family: 'Segoe UI', sans-serif;
-      `;
-
-      const title = document.createElement('div');
-      title.innerText = "Invalid API Response";
-      title.style.cssText = "color: #e74c3c; font-size: 26px; font-weight: bold; margin-bottom: 20px; text-shadow: 0 0 10px rgba(231, 76, 60, 0.5);";
-
-      const btn = document.createElement('button');
-      btn.innerText = "Close Tab";
-      btn.style.cssText = `
-          padding: 15px 40px;
-          font-size: 18px;
-          font-weight: 700;
-          color: white;
-          background: #c0392b;
-          border: none;
-          border-radius: 8px;
-          cursor: pointer;
-          box-shadow: 0 0 25px rgba(192, 57, 43, 0.6);
-          font-family: 'Segoe UI', sans-serif;
-          transition: transform 0.2s;
-      `;
-
-      btn.onmouseover = () => btn.style.transform = "scale(1.05)";
-      btn.onmouseout = () => btn.style.transform = "scale(1)";
-
-      btn.onclick = () => {
-          window.close();
-          btn.innerText = "Please close manually (Ctrl+W)";
-          btn.style.background = "#555";
+  function createCallbackOverlay() {
+      // --- Load Settings ---
+      const settings = {
+          skip: GM_getValue('zerox.setting.skip', false),
+          autoRedirect: GM_getValue('zerox.setting.auto', false),
+          timer: GM_getValue('zerox.setting.timer', 15) // Default 15s
       };
 
-      overlay.appendChild(title);
-      overlay.appendChild(btn);
-
-      if (document.body) {
-          document.body.appendChild(overlay);
-      } else {
-          document.addEventListener('DOMContentLoaded', () => document.body.appendChild(overlay));
-      }
-  }
-
-  function createNoBypassOverlay() {
       const overlay = document.createElement('div');
       overlay.style.cssText = `
           position: fixed;
@@ -185,7 +140,7 @@
       `;
 
       const title = document.createElement('div');
-      title.innerText = "Zerox Guard";
+      title.innerText = "Safe Mode";
       title.style.cssText = "color: white; font-size: 20px; font-weight: bold; margin-bottom: 10px; font-family: 'Segoe UI', sans-serif;";
 
       const countdownText = document.createElement('div');
@@ -212,11 +167,119 @@
       `;
       btn.style.pointerEvents = "none";
 
+      // --- SETTINGS UI ---
+      const settingsIcon = document.createElement('div');
+      settingsIcon.innerHTML = `
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="3"></circle>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+        </svg>
+      `;
+      settingsIcon.style.cssText = `
+        position: absolute;
+        bottom: 20px;
+        left: 20px;
+        color: rgba(255,255,255,0.6);
+        cursor: pointer;
+        transition: color 0.2s;
+        z-index: 2147483649;
+      `;
+      settingsIcon.onmouseover = () => settingsIcon.style.color = "white";
+      settingsIcon.onmouseout = () => settingsIcon.style.color = "rgba(255,255,255,0.6)";
+
+      // Settings Menu Container
+      const settingsMenu = document.createElement('div');
+      settingsMenu.style.cssText = `
+        position: absolute;
+        bottom: 60px;
+        left: 20px;
+        width: 280px;
+        background: #1e1e1e;
+        border: 1px solid #333;
+        border-radius: 10px;
+        padding: 15px;
+        display: none;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+        color: white;
+        font-family: 'Segoe UI', sans-serif;
+        z-index: 2147483649;
+      `;
+
+      // Helper for toggle
+      const createToggle = (labelText, settingKey, currentVal) => {
+        const wrap = document.createElement('div');
+        wrap.style.cssText = "display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;";
+        const label = document.createElement('span');
+        label.innerText = labelText;
+        label.style.fontSize = "14px";
+
+        const toggleBtn = document.createElement('div');
+        toggleBtn.style.cssText = `
+            width: 40px; height: 20px; background: ${currentVal ? '#e67e22' : '#444'};
+            border-radius: 10px; position: relative; cursor: pointer; transition: background 0.3s;
+        `;
+        const knob = document.createElement('div');
+        knob.style.cssText = `
+            width: 16px; height: 16px; background: white; border-radius: 50%;
+            position: absolute; top: 2px; left: ${currentVal ? '22px' : '2px'}; transition: left 0.3s;
+        `;
+        toggleBtn.appendChild(knob);
+
+        toggleBtn.onclick = () => {
+            const newState = !GM_getValue(settingKey, false);
+            GM_setValue(settingKey, newState);
+            toggleBtn.style.background = newState ? '#e67e22' : '#444';
+            knob.style.left = newState ? '22px' : '2px';
+            // Force reload to apply logic changes for next run if needed
+            if(settingKey.includes('skip')) location.reload();
+        };
+
+        wrap.appendChild(label);
+        wrap.appendChild(toggleBtn);
+        return wrap;
+      };
+
+      // Timer Slider
+      const timerContainer = document.createElement('div');
+      timerContainer.style.marginBottom = "10px";
+      const timerHeader = document.createElement('div');
+      timerHeader.style.cssText = "display: flex; justify-content: space-between; font-size: 14px; margin-bottom: 5px;";
+      timerHeader.innerHTML = `<span>Timer Duration</span><span id="timerVal">${settings.timer}s</span>`;
+
+      const rangeInput = document.createElement('input');
+      rangeInput.type = "range";
+      rangeInput.min = "3";
+      rangeInput.max = "60";
+      rangeInput.value = settings.timer;
+      rangeInput.style.cssText = "width: 100%; cursor: pointer; accent-color: #e67e22;";
+      rangeInput.oninput = (e) => {
+        const val = e.target.value;
+        document.getElementById('timerVal').innerText = val + "s";
+        GM_setValue('zerox.setting.timer', parseInt(val));
+      };
+
+      timerContainer.appendChild(timerHeader);
+      timerContainer.appendChild(rangeInput);
+
+      settingsMenu.appendChild(createToggle("Skip Timer", "zerox.setting.skip", settings.skip));
+      settingsMenu.appendChild(createToggle("Auto Redirect", "zerox.setting.auto", settings.autoRedirect));
+      settingsMenu.appendChild(timerContainer);
+
+      settingsIcon.onclick = () => {
+          settingsMenu.style.display = settingsMenu.style.display === 'none' ? 'block' : 'none';
+      };
+
+      // --- Logic ---
       let countdownInterval;
+      const callbackTarget = GM_getValue("zerox.callbackTarget");
+
+      // Logic: If Skip is enabled, time is 0. Else use saved timer.
+      let countdownDuration = settings.skip ? 0 : (settings.timer * 1000);
+
+      const endTime = Date.now() + countdownDuration;
 
       const forceRefresh = () => {
-           const cleanUrl = window.location.href.replace('#no-bypass', '');
-           window.location.href = cleanUrl;
+          window.location.href = window.location.href;
       };
 
       const showError = () => {
@@ -225,6 +288,17 @@
           title.style.color = "#e74c3c";
           countdownText.style.display = "none";
           setTimeout(forceRefresh, 1500);
+      };
+
+      const performRedirect = () => {
+          clearInterval(countdownInterval);
+          const storedUrl = GM_getValue("zerox.callbackTarget");
+          if (storedUrl && storedUrl.startsWith('http')) {
+              GM_deleteValue("zerox.callbackTarget");
+              window.location.href = storedUrl;
+          } else {
+              showError();
+          }
       };
 
       const activateButton = () => {
@@ -239,31 +313,21 @@
           btn.onmouseover = () => btn.style.transform = "scale(1.05)";
           btn.onmouseout = () => btn.style.transform = "scale(1)";
 
-          btn.onclick = async () => {
-              clearInterval(countdownInterval);
-              const storedUrl = GM_getValue("nexus_cached_url");
-              if (storedUrl && (storedUrl.startsWith('http'))) {
-                  window.location.href = storedUrl;
-                  return;
-              }
-              try {
-                  const text = await navigator.clipboard.readText();
-                  if (text && (text.startsWith('http') || text.startsWith('https'))) {
-                      window.location.href = text;
-                  } else {
-                      showError();
-                  }
-              } catch (err) {
-                  showError();
-              }
+          // Logic: Auto Redirect
+          if (settings.autoRedirect) {
+              btn.innerText = "Redirecting...";
+              performRedirect();
+          }
+
+          btn.onclick = () => {
+              performRedirect();
           };
       };
 
-      let seconds = 15;
       const updateCountdown = () => {
-          if (seconds > 0) {
-              countdownText.innerText = `Zerox Guard Suggested to wait ${seconds} seconds`;
-              seconds--;
+          const remaining = endTime - Date.now();
+          if (remaining > 0) {
+              countdownText.innerText = `Safe Mode Suggested to wait ${(remaining / 1000).toFixed(1)} seconds`;
           } else {
               clearInterval(countdownInterval);
               countdownText.innerText = "You may now proceed.";
@@ -271,13 +335,21 @@
           }
       };
 
-      countdownInterval = setInterval(updateCountdown, 1000);
-      updateCountdown();
+      if (!callbackTarget || !callbackTarget.startsWith('http')) {
+          showError();
+      } else {
+          countdownInterval = setInterval(updateCountdown, 50);
+          updateCountdown();
+      }
 
       overlay.appendChild(title);
       overlay.appendChild(errorText);
       overlay.appendChild(countdownText);
       overlay.appendChild(btn);
+
+      // Append Settings UI
+      overlay.appendChild(settingsIcon);
+      overlay.appendChild(settingsMenu);
 
       if (document.body) {
           document.body.appendChild(overlay);
@@ -400,6 +472,7 @@
 
     if (typeof GM_deleteValue !== 'undefined') {
       GM_deleteValue("bypass.data");
+      GM_deleteValue("zerox.callbackTarget");
     }
 
     const bypassUrl = new URL(`${redirectBase}/bypass`);
@@ -443,23 +516,24 @@
 
     console.log('Zerox: Running on', hostname, 'with URL:', url);
 
+    const callbackTarget = GM_getValue("zerox.callbackTarget");
+    if (callbackTarget) {
+        console.log("Zerox: Found stored callback target:", callbackTarget);
+        createCallbackOverlay();
+        return;
+    }
+
     const bypassData = GM_getValue("bypass.data");
     if (bypassData) {
         const targetUrl = bypassData.bypassData || bypassData;
         console.log("Zerox: Found stored bypass data:", targetUrl);
 
-        showProgressNotification("✅ Callback Success", "Redirecting to destination...");
+        if (targetUrl && typeof GM_setValue !== 'undefined') {
+            GM_setValue("zerox.callbackTarget", targetUrl);
+        }
+
         GM_deleteValue("bypass.data");
-
-        setTimeout(() => {
-            window.location.href = targetUrl;
-        }, 500);
-        return;
-    }
-
-    if (hostname.includes('google.com') && url.includes('hash=')) {
-        console.log('Zerox: Detected Google Hash/Invalid API Response.');
-        createInvalidApiOverlay();
+        createCallbackOverlay();
         return;
     }
 
@@ -668,11 +742,6 @@
     }
 
     if (hostname === 'linkvertise.com' && url !== 'https://linkvertise.com' && url !== 'https://linkvertise.com/') {
-      if (url.includes('#no-bypass')) {
-        console.log('Zerox: #no-bypass flag detected.');
-        createNoBypassOverlay();
-        return;
-      }
       await directBypassRedirect(url);
       return;
     }
@@ -768,11 +837,6 @@
     }
 
     if (bypassCityDomains.some(domain => currentDomain.includes(domain) || hostname.includes(domain))) {
-      if (url.includes('#no-bypass')) {
-          console.log('Zerox: #no-bypass flag on supported domain.');
-          createNoBypassOverlay();
-          return;
-      }
       await directBypassRedirect(cleanUrl);
       return;
     }
@@ -801,9 +865,12 @@
           console.log("Zerox: Received bypassComplete event", data);
 
           const redirectURL = GM_getValue("bypass.callback");
+          const targetUrl = data && (data.bypassData || data);
 
           if (redirectURL) {
-              GM_setValue("bypass.data", data);
+              if (targetUrl) {
+                  GM_setValue("zerox.callbackTarget", targetUrl);
+              }
               GM_deleteValue("bypass.callback");
 
               showProgressNotification("✅ Bypass Complete", "Returning to original tab...");
@@ -813,7 +880,12 @@
               }, 500);
           } else {
                showProgressNotification("✅ Bypass Complete", "Opening link...");
-               window.location.href = data.bypassData;
+               if (targetUrl) {
+                   GM_setValue("zerox.callbackTarget", targetUrl);
+                   window.location.href = targetUrl;
+               } else if (data && data.bypassData) {
+                   window.location.href = data.bypassData;
+               }
           }
       });
 
