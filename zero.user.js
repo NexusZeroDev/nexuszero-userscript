@@ -1,9 +1,9 @@
 // ==UserScript==
-// @name         Zerox Bypasser
+// @name         Zerox Bypasser 
 // @namespace    http://tampermonkey.net/
-// @version      1.0.1
+// @version      14.0.2
 // @description  Forked version of bypass.city userscript
-// @author       Harley & Reinhard
+// @author       Harley & Reinhard 
 // @icon         https://raw.githubusercontent.com/NexusZeroDev/nexuszero-userscript/main/revamped.png
 // @updateURL    https://raw.githubusercontent.com/NexusZeroDev/nexuszero-userscript/main/zero.user.js
 // @downloadURL  https://raw.githubusercontent.com/NexusZeroDev/nexuszero-userscript/main/zero.user.js
@@ -126,6 +126,17 @@
           timer: GM_getValue('zerox.setting.timer', 15) // Default 15s
       };
 
+      // --- IMMEDIATE DATA HANDLING ---
+      // Get the stored URL immediately
+      const callbackTarget = GM_getValue("zerox.callbackTarget");
+      let finalDestination = callbackTarget;
+
+      // If we found a URL, delete it from storage IMMEDIATELY to clean up
+      if (finalDestination) {
+          GM_deleteValue("zerox.callbackTarget");
+          console.log("Zerox: Destination loaded and storage cleared.");
+      }
+
       const overlay = document.createElement('div');
       overlay.style.cssText = `
           position: fixed;
@@ -205,7 +216,6 @@
         z-index: 2147483649;
       `;
 
-      // Helper for toggle
       const createToggle = (labelText, settingKey, currentVal) => {
         const wrap = document.createElement('div');
         wrap.style.cssText = "display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;";
@@ -230,7 +240,6 @@
             GM_setValue(settingKey, newState);
             toggleBtn.style.background = newState ? '#e67e22' : '#444';
             knob.style.left = newState ? '22px' : '2px';
-            // Force reload to apply logic changes for next run if needed
             if(settingKey.includes('skip')) location.reload();
         };
 
@@ -239,7 +248,6 @@
         return wrap;
       };
 
-      // Timer Slider
       const timerContainer = document.createElement('div');
       timerContainer.style.marginBottom = "10px";
       const timerHeader = document.createElement('div');
@@ -271,11 +279,8 @@
 
       // --- Logic ---
       let countdownInterval;
-      const callbackTarget = GM_getValue("zerox.callbackTarget");
 
-      // Logic: If Skip is enabled, time is 0. Else use saved timer.
       let countdownDuration = settings.skip ? 0 : (settings.timer * 1000);
-
       const endTime = Date.now() + countdownDuration;
 
       const forceRefresh = () => {
@@ -292,10 +297,9 @@
 
       const performRedirect = () => {
           clearInterval(countdownInterval);
-          const storedUrl = GM_getValue("zerox.callbackTarget");
-          if (storedUrl && storedUrl.startsWith('http')) {
-              GM_deleteValue("zerox.callbackTarget");
-              window.location.href = storedUrl;
+          // Use the variable we captured at the beginning
+          if (finalDestination && finalDestination.startsWith('http')) {
+              window.location.href = finalDestination;
           } else {
               showError();
           }
@@ -313,7 +317,6 @@
           btn.onmouseover = () => btn.style.transform = "scale(1.05)";
           btn.onmouseout = () => btn.style.transform = "scale(1)";
 
-          // Logic: Auto Redirect
           if (settings.autoRedirect) {
               btn.innerText = "Redirecting...";
               performRedirect();
@@ -335,7 +338,7 @@
           }
       };
 
-      if (!callbackTarget || !callbackTarget.startsWith('http')) {
+      if (!finalDestination || !finalDestination.startsWith('http')) {
           showError();
       } else {
           countdownInterval = setInterval(updateCountdown, 50);
@@ -346,8 +349,7 @@
       overlay.appendChild(errorText);
       overlay.appendChild(countdownText);
       overlay.appendChild(btn);
-
-      // Append Settings UI
+      
       overlay.appendChild(settingsIcon);
       overlay.appendChild(settingsMenu);
 
