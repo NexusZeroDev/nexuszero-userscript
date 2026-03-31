@@ -1,9 +1,9 @@
 // ==UserScript==
-// @name         Zerox Bypasser 
+// @name         Zerox Bypasser
 // @namespace    http://tampermonkey.net/
-// @version      14.0.2
+// @version      14.0.2.0
 // @description  Forked version of bypass.city userscript
-// @author       Harley & Reinhard 
+// @author       Harley & Reinhard
 // @icon         https://raw.githubusercontent.com/NexusZeroDev/nexuszero-userscript/main/revamped.png
 // @updateURL    https://raw.githubusercontent.com/NexusZeroDev/nexuszero-userscript/main/zero.user.js
 // @downloadURL  https://raw.githubusercontent.com/NexusZeroDev/nexuszero-userscript/main/zero.user.js
@@ -25,16 +25,8 @@
 // @match        *://sub2unlock.com/*
 // @match        *://sub2unlock.net/*
 // @match        *://sub2get.com/*
-// @match        *://ads.luarmor.net/get_key*
-// @match        *://pandadevelopment.net/*
-// @match        *://luminon.top/*
-// @match        *://atherhub-key-nexus.lovable.app/*
-// @match        *://www.getastra.lol/*
-// @match        *://scripts.city/*
 // @match        *://bypass.city/*
 // @match        *://adbypass.org/*
-// @match        *://auth.platoboost.app/*
-// @match        *://auth.platorelay.com/*
 // @match        *://*.adshnk.com/*
 // @match        *://*.adshrink.it/*
 // @match        *://*.shrink-service.it/*
@@ -86,6 +78,8 @@
 // @match        *://socialwolvez.com/app/l/*
 // @match        *://sub1s.com/*
 // @match        *://subtolink.com/*
+// @match        *://sub2unlock.com/*
+// @match        *://sub2unlock.net/*
 // @match        *://unlocknow.net/*
 // @match        *://v.gd/*
 // @exclude      *://publisher.linkvertise.com/*
@@ -118,322 +112,278 @@
       downloadURL: "https://api2.adbypass.org/userscript/download/bypass.user.js"
   };
 
-  function createCallbackOverlay() {
-      // --- Load Settings ---
-      const settings = {
-          skip: GM_getValue('zerox.setting.skip', false),
-          autoRedirect: GM_getValue('zerox.setting.auto', false),
-          timer: GM_getValue('zerox.setting.timer', 15) // Default 15s
+  // Anti-Detection: Generate random IDs for injected DOM elements
+  function generateRandomId() {
+      return 'zx-' + Math.random().toString(36).substring(2, 10);
+  }
+
+  // --- TOP RIGHT STACKED NOTIFICATION SYSTEM ---
+  let notifWrapper = null;
+  let notifHost = null;
+
+  function initNotificationContainer() {
+      if (notifWrapper && notifHost && notifHost.isConnected) return;
+
+      notifHost = document.createElement('div');
+      notifHost.id = generateRandomId();
+      notifHost.style.cssText = 'position: fixed; top: 25px; right: 25px; z-index: 2147483647; pointer-events: none; display: flex; flex-direction: column; gap: 15px;';
+
+      const shadow = notifHost.attachShadow({ mode: 'closed' });
+
+      notifWrapper = document.createElement('div');
+      notifWrapper.style.cssText = 'display: flex; flex-direction: column; gap: 15px; align-items: flex-end;';
+
+      const style = document.createElement('style');
+      style.textContent = `
+          .zx-notif {
+              background: rgba(15, 23, 42, 0.65);
+              backdrop-filter: blur(16px);
+              -webkit-backdrop-filter: blur(16px);
+              border: 1px solid rgba(255, 255, 255, 0.08);
+              border-left: 6px solid var(--theme-color);
+              padding: 18px 26px;
+              border-radius: 20px;
+              font-family: 'Segoe UI', system-ui, sans-serif;
+              box-shadow: 0 15px 35px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.1);
+              opacity: 0;
+              transform: translateX(120%);
+              animation:
+                  slideIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards,
+                  hoverFloat 4s ease-in-out infinite 0.6s;
+              min-width: 290px;
+              pointer-events: none;
+          }
+          .zx-title {
+              font-size: 20px;
+              font-weight: 800;
+              margin-bottom: 6px;
+              color: #ffffff;
+              text-transform: capitalize;
+              letter-spacing: 0.5px;
+          }
+          .zx-desc {
+              font-size: 15px;
+              color: var(--theme-color);
+              font-weight: 600;
+              letter-spacing: 0.3px;
+          }
+
+          @keyframes slideIn {
+              0% { opacity: 0; transform: translateX(120%) scale(0.95); }
+              100% { opacity: 1; transform: translateX(0) scale(1); }
+          }
+
+          @keyframes hoverFloat {
+              0%, 100% { transform: translateY(0); }
+              50% { transform: translateY(-8px); }
+          }
+      `;
+
+      shadow.appendChild(style);
+      shadow.appendChild(notifWrapper);
+
+      const attachUI = () => {
+          const target = document.body || document.documentElement;
+          if (target) {
+              target.appendChild(notifHost);
+
+              const observer = new MutationObserver(() => {
+                  if (!notifHost.isConnected && (document.body || document.documentElement)) {
+                      (document.body || document.documentElement).appendChild(notifHost);
+                  }
+              });
+              observer.observe(document.documentElement || document, { childList: true, subtree: true });
+          } else {
+              requestAnimationFrame(attachUI);
+          }
       };
+      attachUI();
+  }
 
-      // --- IMMEDIATE DATA HANDLING ---
-      // Get the stored URL immediately
-      const callbackTarget = GM_getValue("zerox.callbackTarget");
-      let finalDestination = callbackTarget;
+  function pushNotification(title, message, color) {
+      initNotificationContainer();
+      const el = document.createElement('div');
+      el.className = 'zx-notif';
+      el.style.setProperty('--theme-color', color);
 
-      // If we found a URL, delete it from storage IMMEDIATELY to clean up
-      if (finalDestination) {
-          GM_deleteValue("zerox.callbackTarget");
-          console.log("Zerox: Destination loaded and storage cleared.");
+      if (title) {
+          el.innerHTML = `<div class="zx-title">${title}</div><div class="zx-desc">${message}</div>`;
+      } else {
+          el.innerHTML = `<div class="zx-desc">${message}</div>`;
       }
 
-      const overlay = document.createElement('div');
-      overlay.style.cssText = `
-          position: fixed;
-          inset: 0;
-          z-index: 2147483647;
-          background: rgba(0, 0, 0, 0.9);
-          backdrop-filter: blur(15px);
-          display: flex;
-          justify-content: center;
-          align-items: center;
-          flex-direction: column;
+      notifWrapper.appendChild(el);
+  }
+
+  // --- CALLBACK UI LOGIC ---
+  function createCallbackOverlay() {
+      const callbackTarget = GM_getValue("zerox.callbackTarget");
+      let redirectUrl = callbackTarget;
+
+      if (redirectUrl) {
+          GM_deleteValue("zerox.callbackTarget");
+      }
+
+      if (!redirectUrl || !redirectUrl.startsWith('http')) {
+          console.error("Zerox: No valid destination link found.");
+          return;
+      }
+
+      const host = document.createElement('div');
+      host.id = generateRandomId();
+      host.style.cssText = 'position: fixed !important; inset: 0 !important; width: 100vw !important; height: 100vh !important; z-index: 2147483647 !important; background-color: #1a1a1a !important; pointer-events: all !important; display: block !important; margin: 0 !important; padding: 0 !important;';
+
+      const shadow = host.attachShadow({ mode: 'closed' });
+
+      shadow.innerHTML = `
+          <style>
+              :host {
+                  display: block !important;
+                  width: 100vw !important;
+                  height: 100vh !important;
+              }
+              .wrapper {
+                  font-family: Arial, sans-serif !important;
+                  background: #1a1a1a !important;
+                  display: flex !important;
+                  flex-direction: column !important;
+                  align-items: center !important;
+                  justify-content: center !important;
+                  min-height: 100vh !important;
+                  margin: 0 !important;
+                  color: #e0e0e0 !important;
+                  text-align: center !important;
+                  padding: 20px !important;
+              }
+              h2 {
+                  font-size: 2.2em !important;
+                  margin-bottom: 8px !important;
+                  margin-top: 0 !important;
+                  color: #ffffff !important;
+              }
+              p {
+                  font-size: 1.1em !important;
+                  text-align: center !important;
+                  margin: 5px 0 15px 0 !important;
+                  color: #b0b0b0 !important;
+              }
+              button {
+                  font-size: 1.2em !important;
+                  padding: 12px 24px !important;
+                  background: #007bff !important;
+                  color: #ffffff !important;
+                  border: none !important;
+                  border-radius: 6px !important;
+                  cursor: pointer !important;
+                  transition: transform .2s, background .2s !important;
+                  pointer-events: all !important;
+                  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3) !important;
+              }
+              button:hover:not(:disabled) {
+                  transform: scale(1.05) !important;
+                  background: #0056b3 !important;
+              }
+              button:disabled {
+                  background: #555 !important;
+                  color: #999 !important;
+                  cursor: not-allowed !important;
+                  box-shadow: none !important;
+              }
+              #countdown {
+                  font-size: 1.2em !important;
+                  margin-bottom: 20px !important;
+              }
+          </style>
+
+          <div class="wrapper">
+              <h2>Safe Guard</h2>
+              <p>Your target destination is ready. Click below to continue.</p>
+              <div id="countdown"></div>
+              <button id="nextBtn">Continue</button>
+          </div>
       `;
 
-      const title = document.createElement('div');
-      title.innerText = "Safe Mode";
-      title.style.cssText = "color: white; font-size: 20px; font-weight: bold; margin-bottom: 10px; font-family: 'Segoe UI', sans-serif;";
+      const attachUI = () => {
+          if (document.body) {
+              document.body.innerHTML = '';
+              document.body.appendChild(host);
+          } else {
+              setTimeout(attachUI, 50);
+          }
+      };
+      attachUI();
 
-      const countdownText = document.createElement('div');
-      countdownText.style.cssText = "color: #bbb; font-size: 16px; margin-bottom: 25px; font-family: 'Segoe UI', sans-serif;";
+      const countdownEl = shadow.querySelector('#countdown');
+      const btn = shadow.querySelector('#nextBtn');
 
-      const errorText = document.createElement('div');
-      errorText.style.cssText = "color: #e74c3c; font-size: 16px; margin-bottom: 20px; font-family: 'Segoe UI', sans-serif; display: none;";
-      errorText.innerText = "Something went wrong";
-
-      const btn = document.createElement('button');
-      btn.innerText = "Please Wait...";
-      btn.style.cssText = `
-          padding: 15px 40px;
-          font-size: 18px;
-          font-weight: 700;
-          color: rgba(255, 255, 255, 0.5);
-          background: #333;
-          border: 1px solid #444;
-          border-radius: 8px;
-          cursor: not-allowed;
-          font-family: 'Segoe UI', sans-serif;
-          transition: all 0.3s;
-          box-shadow: none;
-      `;
-      btn.style.pointerEvents = "none";
-
-      // --- SETTINGS UI ---
-      const settingsIcon = document.createElement('div');
-      settingsIcon.innerHTML = `
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="12" cy="12" r="3"></circle>
-          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
-        </svg>
-      `;
-      settingsIcon.style.cssText = `
-        position: absolute;
-        bottom: 20px;
-        left: 20px;
-        color: rgba(255,255,255,0.6);
-        cursor: pointer;
-        transition: color 0.2s;
-        z-index: 2147483649;
-      `;
-      settingsIcon.onmouseover = () => settingsIcon.style.color = "white";
-      settingsIcon.onmouseout = () => settingsIcon.style.color = "rgba(255,255,255,0.6)";
-
-      // Settings Menu Container
-      const settingsMenu = document.createElement('div');
-      settingsMenu.style.cssText = `
-        position: absolute;
-        bottom: 60px;
-        left: 20px;
-        width: 280px;
-        background: #1e1e1e;
-        border: 1px solid #333;
-        border-radius: 10px;
-        padding: 15px;
-        display: none;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.5);
-        color: white;
-        font-family: 'Segoe UI', sans-serif;
-        z-index: 2147483649;
-      `;
-
-      const createToggle = (labelText, settingKey, currentVal) => {
-        const wrap = document.createElement('div');
-        wrap.style.cssText = "display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;";
-        const label = document.createElement('span');
-        label.innerText = labelText;
-        label.style.fontSize = "14px";
-
-        const toggleBtn = document.createElement('div');
-        toggleBtn.style.cssText = `
-            width: 40px; height: 20px; background: ${currentVal ? '#e67e22' : '#444'};
-            border-radius: 10px; position: relative; cursor: pointer; transition: background 0.3s;
-        `;
-        const knob = document.createElement('div');
-        knob.style.cssText = `
-            width: 16px; height: 16px; background: white; border-radius: 50%;
-            position: absolute; top: 2px; left: ${currentVal ? '22px' : '2px'}; transition: left 0.3s;
-        `;
-        toggleBtn.appendChild(knob);
-
-        toggleBtn.onclick = () => {
-            const newState = !GM_getValue(settingKey, false);
-            GM_setValue(settingKey, newState);
-            toggleBtn.style.background = newState ? '#e67e22' : '#444';
-            knob.style.left = newState ? '22px' : '2px';
-            if(settingKey.includes('skip')) location.reload();
-        };
-
-        wrap.appendChild(label);
-        wrap.appendChild(toggleBtn);
-        return wrap;
+      const hasHash = (url) => {
+          try {
+              return new URL(url).searchParams.has('hash') || url.includes('hash=');
+          } catch {
+              return url.includes('hash=');
+          }
       };
 
-      const timerContainer = document.createElement('div');
-      timerContainer.style.marginBottom = "10px";
-      const timerHeader = document.createElement('div');
-      timerHeader.style.cssText = "display: flex; justify-content: space-between; font-size: 14px; margin-bottom: 5px;";
-      timerHeader.innerHTML = `<span>Timer Duration</span><span id="timerVal">${settings.timer}s</span>`;
+      if (hasHash(redirectUrl)) {
+          countdownEl.style.color = '#ff4444';
+          countdownEl.style.fontWeight = 'bold';
+          let time = 8;
+          countdownEl.textContent = `ACTION REQUIRED: CLICK WITHIN ${time} SECONDS BEFORE THE LINK EXPIRES`;
 
-      const rangeInput = document.createElement('input');
-      rangeInput.type = "range";
-      rangeInput.min = "3";
-      rangeInput.max = "60";
-      rangeInput.value = settings.timer;
-      rangeInput.style.cssText = "width: 100%; cursor: pointer; accent-color: #e67e22;";
-      rangeInput.oninput = (e) => {
-        const val = e.target.value;
-        document.getElementById('timerVal').innerText = val + "s";
-        GM_setValue('zerox.setting.timer', parseInt(val));
-      };
+          const interval = setInterval(() => {
+              time--;
+              if (time > 0) {
+                  countdownEl.textContent = `ACTION REQUIRED: CLICK WITHIN ${time} SECONDS BEFORE THE LINK EXPIRES`;
+              } else {
+                  countdownEl.textContent = "THE LINK HAS EXPIRED. REFRESHING TO GENERATE A NEW SECURE LINK...";
+                  countdownEl.style.color = '#aaaaaa';
+                  countdownEl.style.fontWeight = 'normal';
+                  btn.disabled = true;
+                  clearInterval(interval);
 
-      timerContainer.appendChild(timerHeader);
-      timerContainer.appendChild(rangeInput);
-
-      settingsMenu.appendChild(createToggle("Skip Timer", "zerox.setting.skip", settings.skip));
-      settingsMenu.appendChild(createToggle("Auto Redirect", "zerox.setting.auto", settings.autoRedirect));
-      settingsMenu.appendChild(timerContainer);
-
-      settingsIcon.onclick = () => {
-          settingsMenu.style.display = settingsMenu.style.display === 'none' ? 'block' : 'none';
-      };
-
-      // --- Logic ---
-      let countdownInterval;
-
-      let countdownDuration = settings.skip ? 0 : (settings.timer * 1000);
-      const endTime = Date.now() + countdownDuration;
-
-      const forceRefresh = () => {
-          window.location.href = window.location.href;
-      };
-
-      const showError = () => {
-          errorText.style.display = "block";
-          title.innerText = "Failed to Redirect to Destination";
-          title.style.color = "#e74c3c";
-          countdownText.style.display = "none";
-          setTimeout(forceRefresh, 1500);
-      };
+                  setTimeout(() => {
+                      location.replace(location.href.split('?')[0]);
+                  }, 3500);
+              }
+          }, 1000);
+      } else {
+          countdownEl.style.display = 'none';
+      }
 
       const performRedirect = () => {
-          clearInterval(countdownInterval);
-          // Use the variable we captured at the beginning
-          if (finalDestination && finalDestination.startsWith('http')) {
-              window.location.href = finalDestination;
-          } else {
-              showError();
-          }
+          if (!redirectUrl || btn.disabled) return;
+          btn.disabled = true;
+          btn.textContent = "Please wait...";
+
+          setTimeout(() => {
+              try {
+                  const a = document.createElement('a');
+                  a.href = redirectUrl;
+                  a.rel = 'noreferrer noopener';
+                  document.body.appendChild(a);
+                  a.click();
+              } catch(e) {}
+
+              try {
+                  window.top.location.href = redirectUrl;
+              } catch(e) {}
+              window.location.assign(redirectUrl);
+          }, 50);
       };
 
-      const activateButton = () => {
-          btn.innerText = "Continue to Destination";
-          btn.style.background = "#e67e22";
-          btn.style.color = "white";
-          btn.style.cursor = "pointer";
-          btn.style.border = "none";
-          btn.style.pointerEvents = "auto";
-          btn.style.boxShadow = "0 0 25px rgba(230, 126, 34, 0.6)";
-
-          btn.onmouseover = () => btn.style.transform = "scale(1.05)";
-          btn.onmouseout = () => btn.style.transform = "scale(1)";
-
-          if (settings.autoRedirect) {
-              btn.innerText = "Redirecting...";
-              performRedirect();
-          }
-
-          btn.onclick = () => {
-              performRedirect();
-          };
-      };
-
-      const updateCountdown = () => {
-          const remaining = endTime - Date.now();
-          if (remaining > 0) {
-              countdownText.innerText = `Safe Mode Suggested to wait ${(remaining / 1000).toFixed(1)} seconds`;
-          } else {
-              clearInterval(countdownInterval);
-              countdownText.innerText = "You may now proceed.";
-              activateButton();
-          }
-      };
-
-      if (!finalDestination || !finalDestination.startsWith('http')) {
-          showError();
-      } else {
-          countdownInterval = setInterval(updateCountdown, 50);
-          updateCountdown();
-      }
-
-      overlay.appendChild(title);
-      overlay.appendChild(errorText);
-      overlay.appendChild(countdownText);
-      overlay.appendChild(btn);
-      
-      overlay.appendChild(settingsIcon);
-      overlay.appendChild(settingsMenu);
-
-      if (document.body) {
-          document.body.appendChild(overlay);
-      } else {
-          document.addEventListener('DOMContentLoaded', () => document.body.appendChild(overlay));
-      }
-  }
-
-  function showProgressNotification(title, subtitle = '', isClickable = false, clickUrl = '', position = 'top') {
-    removeNotification(position);
-    const box = document.createElement('div');
-    box.id = position === 'top' ? 'nexus-progress' : 'nexus-progress-bottom';
-
-    const cursorStyle = isClickable ? 'cursor: pointer;' : '';
-    const topPosition = position === 'top' ? '20px' : '150px';
-
-    box.innerHTML = `
-      <div style="
-        background: #1e1e1e;
-        color: white;
-        border: 2px solid #e67e22;
-        border-radius: 12px;
-        padding: 14px 20px;
-        width: 320px;
-        font-family: 'Segoe UI', sans-serif;
-        position: fixed;
-        top: ${topPosition};
-        right: 20px;
-        z-index: 999999;
-        box-shadow: 0 0 12px rgba(255,255,255,0.15);
-        opacity: 0;
-        transform: translateX(100%);
-        animation: slideInFade 0.5s forwards, fadeOut 0.6s ease-out 8s forwards;
-        ${cursorStyle}
-      ">
-        <div style="font-size: 16px; font-weight: 600;">${title}</div>
-        <div style="font-size: 13px; opacity: 0.85; margin-top: 4px;">${subtitle}</div>
-        ${isClickable ? '<div style="font-size: 11px; opacity: 0.7; margin-top: 8px; font-style: italic;">Click to proceed</div>' : ''}
-      </div>
-    `;
-
-    if (!document.getElementById('nexus-styles')) {
-      GM_addStyle(`
-        @keyframes slideInFade {
-          to { opacity: 1; transform: translateX(0); }
-        }
-        @keyframes fadeOut {
-          to { opacity: 0; transform: translateX(100%); }
-        }
-      `);
-      const styleMarker = document.createElement('div');
-      styleMarker.id = 'nexus-styles';
-      styleMarker.style.display = 'none';
-      document.head.appendChild(styleMarker);
-    }
-
-    if (isClickable && clickUrl) {
-      box.addEventListener('click', () => {
-        if (typeof clickUrl === 'function') {
-          clickUrl();
-        } else {
-          window.open(clickUrl, '_blank');
-        }
+      btn.addEventListener('click', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          e.stopImmediatePropagation();
+          performRedirect();
       });
-    }
 
-    const addNotification = () => {
-      if (document.body) {
-        document.body.appendChild(box);
-      } else {
-        setTimeout(addNotification, 100);
-      }
-    };
-    addNotification();
-  }
-
-  function removeNotification(position = 'top') {
-    const existingTop = document.getElementById('nexus-progress');
-    const existingBottom = document.getElementById('nexus-progress-bottom');
-
-    if (position === 'top' && existingTop) existingTop.remove();
-    if (position === 'bottom' && existingBottom) existingBottom.remove();
+      btn.addEventListener('touchend', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          e.stopImmediatePropagation();
+          performRedirect();
+      }, { passive: false });
   }
 
   async function checkBypassCityStatus() {
@@ -463,10 +413,16 @@
 
   async function directBypassRedirect(url) {
     console.log('Zerox: Using direct bypass method for:', url);
+
+    // --- PHASE 1: Pinging Notification ---
+    pushNotification("", "Pinging Server(this wont take too long)", "#fbbf24"); // Yellow
+
+    // Maintain the ping to decide which server to use seamlessly
     const bypassCityOnline = await checkBypassCityStatus();
     const redirectBase = bypassCityOnline ? "https://bypass.city" : "https://adbypass.org";
 
-    showProgressNotification("🚀 Enhanced Bypass", bypassCityOnline ? "#1 Primary External Server" : "#2 Fallback External Server");
+    // --- PHASE 2: Redirecting Notification (No Site Name) ---
+    pushNotification("", "You are being redirected", "#4ade80"); // Green
 
     if (typeof GM_setValue !== 'undefined') {
         GM_setValue("bypass.callback", window.location.href);
@@ -487,31 +443,6 @@
     }, 2000);
   }
 
-  function clickElementByText(searchText, tagNames = ['button', 'a', 'span', 'div']) {
-      for (const tag of tagNames) {
-          const elements = document.querySelectorAll(tag);
-          for (const el of elements) {
-              if (el.textContent && el.textContent.trim() === searchText) {
-                  console.log(`Zerox: Found "${searchText}" in <${tag}>, clicking...`);
-                  el.click();
-                  return true;
-              }
-          }
-      }
-      const allElements = document.querySelectorAll('*');
-      for (const el of allElements) {
-          if (el.textContent && el.textContent.trim() === searchText && el.children.length === 0) {
-              console.log(`Zerox: Found "${searchText}" in <${el.tagName}> (fallback), clicking parent...`);
-              const clickable = el.closest('button') || el.closest('a') || el;
-              if (clickable) {
-                  clickable.click();
-                  return true;
-              }
-          }
-      }
-      return false;
-  }
-
   async function executeBypass() {
     const hostname = location.hostname;
     const url = window.location.href;
@@ -520,7 +451,7 @@
 
     const callbackTarget = GM_getValue("zerox.callbackTarget");
     if (callbackTarget) {
-        console.log("Zerox: Found stored callback target:", callbackTarget);
+        console.log("Zerox: Found stored callback target trigger.");
         createCallbackOverlay();
         return;
     }
@@ -528,7 +459,7 @@
     const bypassData = GM_getValue("bypass.data");
     if (bypassData) {
         const targetUrl = bypassData.bypassData || bypassData;
-        console.log("Zerox: Found stored bypass data:", targetUrl);
+        console.log("Zerox: Found stored bypass data trigger.");
 
         if (targetUrl && typeof GM_setValue !== 'undefined') {
             GM_setValue("zerox.callbackTarget", targetUrl);
@@ -539,277 +470,8 @@
         return;
     }
 
-    if (hostname.includes('luminon.top')) {
-        const checkRedirect = setInterval(() => {
-            const hasText = Array.from(document.querySelectorAll("*"))
-                .some(el => el.textContent && el.textContent.includes("Pick how you wanna get your Lumin script key"));
-
-            if (hasText) {
-                showProgressNotification("👾 luminon | Redirecting", "Redirecting to a supported checkpoint.");
-                clearInterval(checkRedirect);
-                setTimeout(() => {
-                    window.location.href = "https://ads.luarmor.net/get_key?for=Linkvertise-FxRZfrMeBswV";
-                }, 1500);
-            }
-        }, 1000);
-        setTimeout(() => clearInterval(checkRedirect), 30000);
-        return;
-    }
-
-    if (hostname.includes('atherhub-key-nexus.lovable.app')) {
-        const checkRedirect = setInterval(() => {
-            const hasText = Array.from(document.querySelectorAll("*"))
-                .some(el => el.textContent && el.textContent.includes("Choose your preferred method to get your"));
-
-            if (hasText) {
-                showProgressNotification("💖 Atherhub | Redirecting", "Redirecting to a supported checkpoint.");
-                clearInterval(checkRedirect);
-                setTimeout(() => {
-                    window.location.href = "https://ads.luarmor.net/get_key?for=Atherhub_Lootlabs-hetsPlUqkgEJ";
-                }, 1500);
-            }
-        }, 1000);
-        setTimeout(() => clearInterval(checkRedirect), 30000);
-        return;
-    }
-
-    if (hostname.includes('getastra.lol') && url.includes('/key')) {
-        showProgressNotification("🟣 Astra | Redirecting", "Redirecting to a supported checkpoint.");
-        setTimeout(() => {
-            window.location.href = "https://ads.luarmor.net/get_key?for=Astra_Lootlabs_V-EgqMzPuurmyh";
-        }, 2000);
-        return;
-    }
-
-    if (hostname === 'scripts.city') {
-        if (url.includes('/Legend-Hub-Key-1')) {
-            showProgressNotification("🌀 Legend | Redirecting", "Redirecting to 1st Checkpoint");
-            setTimeout(() => {
-                clickElementByText("Proceed to Key Link");
-            }, 2000);
-            return;
-        }
-        if (url.includes('/Legend-Hub-Key-2025-Roblox')) {
-            showProgressNotification("🌀 Legend | Redirecting", "Redirecting to final Checkpoint.");
-            setTimeout(() => {
-                clickElementByText("Get Your Key");
-            }, 2000);
-            return;
-        }
-    }
-
-    if (hostname === 'justpaste.it' && url.includes('/redirect/')) {
-       const checkContinue = setInterval(() => {
-           const continueBtn = Array.from(document.querySelectorAll("a, button"))
-               .find(el => el.textContent && el.textContent.trim() === "Continue");
-
-           if (continueBtn) {
-               clearInterval(checkContinue);
-               showProgressNotification("📜 Justpaste | Success", "You should be redirected.");
-               continueBtn.click();
-           }
-       }, 500);
-       setTimeout(() => clearInterval(checkContinue), 10000);
-       return;
-    }
-
-    if (hostname.includes('pandadevelopment.net')) {
-        const checkProvider = setInterval(() => {
-            const hasText = Array.from(document.querySelectorAll("*"))
-                .some(el => el.textContent && el.textContent.includes("Select Checkpoint Provider"));
-
-            if (hasText) {
-                showProgressNotification("🐼 Panda Development | Beta", "Select an Ad Service");
-                clearInterval(checkProvider);
-            }
-        }, 1000);
-        setTimeout(() => clearInterval(checkProvider), 30000);
-
-        const checkTasks = setInterval(() => {
-            const hasTaskText = Array.from(document.querySelectorAll("*"))
-                .some(el => el.textContent && el.textContent.includes("Complete these first before getting the key"));
-
-            if (hasTaskText) {
-                showProgressNotification(
-                    "🐼 Panda Development | Beta",
-                    "Please complete the task below to proceed to the next step."
-                );
-                clearInterval(checkTasks);
-            }
-        }, 1000);
-        setTimeout(() => clearInterval(checkTasks), 30000);
-
-        const checkCopyKey = setInterval(() => {
-            const copyKeyBtn = Array.from(document.querySelectorAll("*"))
-                .find(el => (el.textContent || '').trim() === "Copy Key");
-
-            if (copyKeyBtn) {
-                clearInterval(checkCopyKey);
-                showProgressNotification("🐼 Panda Development | Beta", "Please go ahead and copy the key.");
-            }
-        }, 1000);
-        setTimeout(() => clearInterval(checkCopyKey), 120000);
-
-        return;
-    }
-
-    if (url.startsWith('https://ads.luarmor.net/get_key')) {
-      let isFinalSuccess = false;
-
-      const checkFinalState = setInterval(() => {
-        const doneElement = Array.from(document.querySelectorAll("*"))
-            .find(el => (el.textContent || '').trim() === "doneDone");
-
-        if (doneElement) {
-            isFinalSuccess = true;
-            showProgressNotification(
-                "🦅 Luarmor | Success",
-                "All checkpoints have been completed. Get a new key or renew a key."
-            );
-            clearInterval(checkFinalState);
-        }
-      }, 500);
-
-      const checkGetNewKey = setInterval(() => {
-        if (isFinalSuccess) {
-            clearInterval(checkGetNewKey);
-            return;
-        }
-
-        const getNewKeyElement = Array.from(document.querySelectorAll("*"))
-          .find(el => (el.outerText || '').includes("GET A NEW KEY"));
-
-        if (getNewKeyElement && !isFinalSuccess) {
-          GM_setClipboard(window.location.href);
-          showProgressNotification(
-              '🦅 Luarmor | Info',
-              'Admaven & Linkvertise Checkpoints are only supported.'
-          );
-          clearInterval(checkGetNewKey);
-        }
-      }, 1000);
-
-      setTimeout(() => clearInterval(checkGetNewKey), 30000);
-
-      const checkCaptchaText = setInterval(() => {
-        const content = document.body ? document.body.innerText : '';
-        if (content.includes("* Complete the captcha to start")) {
-          showProgressNotification("⚠️ Captcha Required", "Please complete the hCaptcha to continue.");
-          clearInterval(checkCaptchaText);
-        }
-      }, 1000);
-      setTimeout(() => clearInterval(checkCaptchaText), 30000);
-
-      const checkSuccess = setInterval(() => {
-        if (isFinalSuccess) return;
-
-        const successElement = Array.from(document.querySelectorAll("*"))
-            .find(el => (el.textContent || '').includes("You can now proceed to the next checkpoint."));
-
-        if (successElement) {
-            showProgressNotification(
-                "🦅 Luarmor | Success",
-                "Successfully bypassed Luarmor’s anti-measures and completed the checkpoint."
-            );
-            clearInterval(checkSuccess);
-        }
-      }, 1000);
-      setTimeout(() => clearInterval(checkSuccess), 60000);
-
-      const waitForBody = () => {
-        if (!document.body) {
-          setTimeout(waitForBody, 100);
-          return;
-        }
-        const observer = new MutationObserver(() => {
-          const errorPopup = document.querySelector('.swal2-popup.swal2-modal.swal2-icon-error');
-          if (errorPopup) {
-            showProgressNotification('⛔ Blacklisted', 'Luarmor has blacklisted your IP.');
-            observer.disconnect();
-            let seconds = 5;
-            const interval = setInterval(() => {
-              if (seconds === 0) {
-                clearInterval(interval);
-                try { window.close(); } catch { showProgressNotification('🔒 Close Manually', 'Browser blocked auto-close.'); }
-              } else {
-                showProgressNotification('⏳ Closing Tab', `Closing in ${seconds--}s...`);
-              }
-            }, 1000);
-          }
-        });
-        observer.observe(document.body, { childList: true, subtree: true });
-      };
-      waitForBody();
-      return;
-    }
-
     if (hostname === 'linkvertise.com' && url !== 'https://linkvertise.com' && url !== 'https://linkvertise.com/') {
       await directBypassRedirect(url);
-      return;
-    }
-
-    if (hostname.includes('auth.platoboost.app') || hostname.includes('auth.platorelay.com')) {
-      const checkFalseClickModal = setInterval(() => {
-        const okButtons = Array.from(document.querySelectorAll("button"))
-          .filter(btn => (btn.textContent || '').trim().toLowerCase() === "ok");
-        for (const okBtn of okButtons) {
-          const modalContent = okBtn.closest('[role="dialog"], .modal, [class*="modal"]');
-          if (modalContent && (modalContent.innerText || '').toLowerCase().includes('false click')) {
-            okBtn.click();
-            break;
-          }
-        }
-      }, 500);
-      setTimeout(() => clearInterval(checkFalseClickModal), 60000);
-
-      const checkExpired = setInterval(() => {
-        if ((document.body?.innerText || '').includes("This session has expired")) {
-          showProgressNotification("⏰ Session Expired", "Please get a new link.");
-          clearInterval(checkExpired);
-        }
-      }, 1000);
-
-      const checkContinueButton = setInterval(() => {
-        const continueBtn = Array.from(document.querySelectorAll("button, a, span, div"))
-          .find(el => (el.textContent || '').trim() === "Continue");
-
-        if (continueBtn) {
-          clearInterval(checkContinueButton);
-          showProgressNotification("🌊 auth.platorelay | Beta release", "Click Continue below to proceed to the step.");
-        }
-      }, 500);
-      setTimeout(() => clearInterval(checkContinueButton), 30000);
-
-      const checkSecurity = setInterval(() => {
-        const securityText = Array.from(document.querySelectorAll("*"))
-            .find(el => (el.textContent || '').includes("Security check"));
-
-        if (securityText) {
-          showProgressNotification("🔐 Turnstile Required", "Complete verification.");
-          clearInterval(checkSecurity);
-        }
-      }, 1000);
-      setTimeout(() => clearInterval(checkSecurity), 30000);
-
-      const checkCaptchaText = setInterval(() => {
-        if (Array.from(document.querySelectorAll("p")).some(p => (p.innerHTML || '').includes("* Complete the captcha"))) {
-          showProgressNotification("⚠️ Captcha Required", "Complete hCaptcha.");
-          clearInterval(checkCaptchaText);
-        }
-      }, 1000);
-      setTimeout(() => clearInterval(checkCaptchaText), 30000);
-
-      const checkCopyButton = setInterval(() => {
-        const copyBtn = Array.from(document.querySelectorAll("*")).find(el =>
-          (el.innerText || '').trim() === "Copy" && (el.tagName === "BUTTON" || el.className.includes('btn'))
-        );
-        if (copyBtn) {
-          copyBtn.click();
-          showProgressNotification("📋 Copied Successfully", "Key copied!");
-          clearInterval(checkCopyButton);
-        }
-      }, 1000);
-      setTimeout(() => clearInterval(checkCopyButton), 120000);
       return;
     }
 
@@ -833,6 +495,7 @@
       const targetUrl = urlParams.get('url') || urlParams.get('q');
       if (targetUrl) { await directBypassRedirect(targetUrl); return; }
     }
+
     if (hostname === 'socialwolvez.com' && url.includes('/app/l/')) {
       await directBypassRedirect(url);
       return;
@@ -843,9 +506,23 @@
       return;
     }
 
-    if (hostname.includes("bypass.city") || hostname.includes("adbypass.org")) {
-      const siteName = hostname.includes("bypass.city") ? "bypass.city" : "adbypass.org";
+    if (hostname === 'justpaste.it' && url.includes('/redirect/')) {
+       const checkContinue = setInterval(() => {
+           const continueBtn = Array.from(document.querySelectorAll("a, button"))
+               .find(el => el.textContent && el.textContent.trim() === "Continue");
 
+           if (continueBtn) {
+               clearInterval(checkContinue);
+               // Fast silent click to redirect Justpaste
+               continueBtn.click();
+           }
+       }, 500);
+       setTimeout(() => clearInterval(checkContinue), 10000);
+       return;
+    }
+
+    // Bypass.city & Adbypass.org Handling Logic (Automated Return)
+    if (hostname.includes("bypass.city") || hostname.includes("adbypass.org")) {
       const injectScriptInfo = () => {
           const injectJs = `window.scriptInfo = JSON.parse('${JSON.stringify(config)}')`;
           const script = document.createElement("script");
@@ -875,13 +552,10 @@
               }
               GM_deleteValue("bypass.callback");
 
-              showProgressNotification("✅ Bypass Complete", "Returning to original tab...");
-
               setTimeout(() => {
                    window.open(redirectURL, "_self");
               }, 500);
           } else {
-               showProgressNotification("✅ Bypass Complete", "Opening link...");
                if (targetUrl) {
                    GM_setValue("zerox.callbackTarget", targetUrl);
                    window.location.href = targetUrl;
@@ -890,36 +564,6 @@
                }
           }
       });
-
-      const checkCloudflareErrorEnhanced = () => {
-        if (document.body) {
-          const bodyText = document.body.innerText || '';
-          const pageTitle = document.title || '';
-          if (bodyText.includes("Error 522") || bodyText.includes("Connection timed out") || pageTitle.includes("522") ||
-              pageTitle.includes("Just a moment") || bodyText.includes("Please wait while we check your browser")) {
-            showProgressNotification("⚠️ Cloudflare Error", `Refreshing ${siteName} in 3s...`);
-            setTimeout(() => location.reload(), 3000);
-          }
-        }
-      };
-      checkCloudflareErrorEnhanced();
-      setTimeout(checkCloudflareErrorEnhanced, 2000);
-
-      let lastStatus = "";
-      const statusInterval = setInterval(() => {
-        if (!document.body) return;
-        const content = document.body.innerText;
-        if (content.includes("Internal server error") && lastStatus !== "server_error") {
-          showProgressNotification("❌ Server Error", `${siteName} has issues.`);
-          lastStatus = "server_error";
-        } else if (content.includes("Link not found") && lastStatus !== "link_not_found") {
-          showProgressNotification("🔗 Link Not Found", "Could not process link.");
-          lastStatus = "link_not_found";
-        } else if (content.includes("Processing") && lastStatus !== "processing") {
-          showProgressNotification("⏳ Bypassing...", "Please wait...");
-          lastStatus = "processing";
-        }
-      }, 500);
       return;
     }
   }
