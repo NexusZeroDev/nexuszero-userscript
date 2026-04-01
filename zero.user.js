@@ -110,7 +110,7 @@
   const hostname = window.location.hostname;
   const url = window.location.href;
 
-  // --- ANTI-DETECTION LAYER 1: SYNCHRONOUS EXECUTION HALT ---
+  // --- ANTI-DETECTION Erm what? 1: SYNCHRONOUS EXECUTION HALT ---
   // Do not block bypass APIs or sites that need DOM interaction (justpaste)
   const isSafeDomain = hostname.includes('bypass.city') ||
                        hostname.includes('adbypass.org') ||
@@ -120,14 +120,14 @@
       // IMMEDIATELY KILL the browser's HTML parser. Stops tracking scripts from ever loading.
       try { window.stop(); } catch(e) {}
 
-      // Wipe anything that managed to slip through in the first millisecond
+      // Wipe anything that managed to slip through in the first millisecond, we sale child
       if (document.documentElement) {
           document.documentElement.innerHTML = '';
           document.documentElement.style.backgroundColor = '#1a1a1a';
       }
   }
 
-  // --- HARD KILL-SWITCH: Block invalid.linkvertise.com completely ---
+  // --- HARD KILL-SWITCH: Block invalid.linkvertise.com completely eh ---
   if (hostname === 'invalid.linkvertise.com') {
       document.documentElement.innerHTML = `
           <style>body{background:#1a1a1a;color:#fff;font-family:sans-serif;display:flex;flex-direction:column;justify-content:center;align-items:center;height:100vh;margin:0;}</style>
@@ -140,13 +140,13 @@
       return;
   }
 
-  // --- ANTI-DETECTION LAYER 2: BOT SPOOFING ---
+  // --- ANTI-DETECTION LAYER 2: BOT SPOOFING(not discord bot xd) ---
   try {
       Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
       Object.defineProperty(navigator, 'plugins', { get: () => [1, 2, 3] });
   } catch(e) {}
 
-  // --- ANTI-DETECTION LAYER 3: NATIVE FUNCTION CACHING & TOSTRING SPOOFING ---
+  // --- ANTI-DETECTION LAYER 3: NATIVE FUNCTION CACHING & TOSTRING SPOOFING(what the hell) ---
   const OriginalAttachShadow = Element.prototype.attachShadow;
   const OriginalToString = Function.prototype.toString;
   const maskedFunctions = new WeakMap();
@@ -171,7 +171,7 @@
   function generateRandomId() { return 'zx-id-' + Math.random().toString(36).substring(2, 10); }
   function generateRandomTag() { return 'zx-' + Math.random().toString(36).substring(2, 8); }
 
-  // --- TOP RIGHT STACKED NOTIFICATION SYSTEM (PHASE UI) ---
+  // --- TOP RIGHT STACKED NOTIFICATION SYSTEM AND NOTHING GOOD HERE (PHASE UI) ---
   let notifWrapper = null;
   let notifHost = null;
 
@@ -274,7 +274,7 @@
       notifWrapper.appendChild(el);
   }
 
-  // --- CALLBACK UI LOGIC ---
+  // --- CALLBACK UI LOGIC(pls dont skid) ---
   function createCallbackOverlay(fallbackUrl = null) {
       let redirectUrl = fallbackUrl || GM_getValue("zerox.callbackTarget");
       if (redirectUrl) GM_deleteValue("zerox.callbackTarget");
